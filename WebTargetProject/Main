@@ -1,0 +1,41 @@
+# NOM DU PROJET         :       WEBTARGET
+#
+# AUTEURS               :
+#                                - STEPHANE KY
+#                                - CHALANA MENG
+#                                - CAROLINE TANG SONG
+# CLASSE                :       3 SRC 3
+# DATE                  :       11/01/2019
+
+import tkinter as tk
+from tkinter import filedialog
+
+
+class Window:
+
+    #INITIALISATION DE LA FENETRE
+    window = tk.Tk()
+    window.geometry("500x500")
+    #TITRE PRINCIPAL
+    title = tk.Label(window, text="Bienvenue sur WebTarget")
+    title.pack()
+
+    #FRAME LABELISEE
+    labelFrame = tk.LabelFrame(window, text="Votre liste d'emails")
+    labelFrame.pack(fill="both")
+    #BOUTTON D'IMPORT DE FICHIERS CSV
+    buttonFrame = tk.Frame(labelFrame)
+    buttonFrame.pack(fill="both", expand="yes")
+    buttonAddCSV = tk.Button(
+                            buttonFrame,
+                            text="Importer un CSV",
+                            command=lambda:filedialog.askopenfilename(initialdir = "/",title = "Choisir un fichier",filetypes = (("Fichiers CSV","*.csv"),("Tous les fichiers","*.*")))
+                            )
+    buttonAddCSV.pack(side=tk.LEFT)
+    buttonTest = tk.Button(buttonFrame, text="Test", command=buttonFrame.pack_forget())
+    buttonTest.pack()
+    listBox = tk.Listbox(labelFrame)
+    listBox.pack(expand="yes", fill="both")
+    window.mainloop()
+
+
