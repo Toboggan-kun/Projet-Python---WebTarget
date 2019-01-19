@@ -8,12 +8,51 @@
 # DATE                  :       11/01/2019
 import tkMessageBox
 from Tkinter import *
+import os
 from tkFileDialog import askopenfilename
 import csv
 from collections import namedtuple
 global labelFrameCampagne
 global labelFrameOptions
 
+import scrapy
+
+
+class Dyson(scrapy.Spider):
+    name = "dyson"
+
+    def start_requests(self):
+        urls = [
+            'http://www.thelin.net/laurent/labo/html/mailto.html',
+        ]
+        for url in urls:
+            yield scrapy.Request(url=url, callback=self.parse)
+
+    def parse(self, response):
+        i = 0
+        mail = []
+        page = response.url.split("/")[-2]
+        filename = 'dyson-%s.html' % page
+
+        for line in response.body.splitlines():
+            line = line.lower()
+            if line.find('href="mailto') == -1:
+
+                print "NO MAIL"
+            else:
+                print"%s" % (line)
+                match = re.search(r'[\w\.-]+@[\w\.-]+',line)
+                str1 = match.group(0)
+                mail.append(str1)
+                print "MAIL"
+                i += 1
+        print(mail)
+        with open('test.csv','wb') as csvfile:
+            filewriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting= csv.QUOTE_MINIMAL)
+            filewriter.writerow(mail)
+        print "nombre de mail : %d" % (i)
+
+#MESSAGES D'ALTERTES
 def errorMessagesDialog(message):
     tkMessageBox.showerror("Erreur", message)
 
@@ -24,22 +63,77 @@ def infoMessagesDialog(message):
 
 def warningMessagesDialog(message):
     tkMessageBox.showwarning("Attention", message)
-
+#MESSAGES D'ALERTES - FIN
+#RENDRE DES COMPOSANTS VISIBLES OU NON
 def hideComponent(component):
     component.pack_forget()
 
 def showComponent(component):
     component.pack()
+#RENDRE DES COMPOSANTS VISIBLES OU NON - FIN
+
 def campagneName(entryValue, createCampagneFrame, importOptionsFrame):
 
+    #VERIFIE SI UN NOM DE CAMPAGNE A ETE INDIQUE
+    #SI NON, AFFICHE UN MESSAGE D'ERREUR
     if len(entryValue.get()) == 0:
         errorMessagesDialog("Votre nom de campagne est vide.")
+
+    #SINON ON AFFICHE L'ETAPE SUIVANTE
     else:
         hideComponent(createCampagneFrame)
         showComponent(importOptionsFrame)
 
+
+def addURLDialog():
+
+    global addURLWindow
+    addURLWindow = Tk()
+    addURLWindow.geometry("200x150")
+    label = Label(addURLWindow, text="Veuillez saisir une URL : ")
+    entryURL = Entry(addURLWindow)
+
+    label.pack(side=TOP, pady=5)
+    entryURL.pack(side=TOP, fill=X, padx=5, pady=5)
+    global labelFrameMessage
+    labelFrameMessage = LabelFrame(addURLWindow)
+    global messageLabel
+    messageLabel = Label(labelFrameMessage)
+    labelFrameMessage.pack(fill=X, padx=5, pady=5)
+    messageLabel.pack()
+
+    buttonUndo = Button(addURLWindow, text="Annuler", command=lambda:addURLWindow.destroy())
+    buttonValid = Button(addURLWindow, text="Valider", command=lambda:checkURL(entryURL, messageLabel))
+    buttonUndo.pack(side=LEFT, padx=5, pady=5)
+    buttonValid.pack(side=RIGHT, padx=5, pady=5)
+    addURLWindow.mainloop()
+
+
+def checkURL(url, message):
+
+    #PING L'URL
+    response = os.system("ping " + url.get())
+
+    #VERIFIE SI LE LABEL EXISTE DEJA POUR EVITER DE CREER DES DOUBLONS A CHAQUE LANCEMENT DE LA FONCTION
+    if message.winfo_exists() == 1:
+        print "Existe deja"
+
+    else:
+        message = Label(labelFrameMessage, text="Contact en cours avec" + url.get())
+        message.pack(side=TOP, fill=X)
+
+    #SI LE PING A FONCTIONNE : FERME LA FENETRE ET AFFICHE LES URLS TROUVEES
+    if response == 0:
+        addURLWindow.destroy()
+    #SINON : AFFICHE UN MESSAGE D'ERREUR
+    else:
+        message.config(text="Impossible de contacter cet URL")
+        message.config(fg="red")
+
+
 def readCSVFile(listBox):
 
+    numberEmail = 0
     Header = namedtuple('Headers', 'EMails')
     fileName = askopenfilename(initialdir="/", title="Choisir un fichier", filetypes=(("Fichiers CSV","*.csv"),("Tous les fichiers","*.*")))
     if len(fileName) == 0:
@@ -50,7 +144,11 @@ def readCSVFile(listBox):
         read = csv.reader(file, delimiter=",", quotechar="'")
 
         for data in map(Header._make, read):
+            numberEmail += 1
             listBox.insert(END, data.EMails)
+
+        labelNumberEmail = Label(window, text="Nombre de destinataires : " + str(numberEmail))
+        labelNumberEmail.pack()
 
 def goToMainPage():
     hideComponent(labelFrameOptions)
@@ -60,6 +158,7 @@ def goToMainPage():
 class Window:
 
     #INITIALISATION DE LA FENETRE
+    global window
     window = Tk()
     window.geometry("500x500")
 
@@ -82,7 +181,7 @@ class Window:
     entryCampagne = Entry(labelFrameCampagne)
     entryCampagne.pack()
 
-    buttonCreateCampagne = Button(labelFrameCampagne, text="Valider", command=lambda : campagneName(entryCampagne, labelFrameCampagne, labelFrameOptions))
+    buttonCreateCampagne = Button(labelFrameCampagne, text="Valider", command=lambda:campagneName(entryCampagne, labelFrameCampagne, labelFrameOptions))
     buttonCreateCampagne.pack()
 
     # 1 - CREATION D'UN FICHIER DE CAMPAGNE FIN
@@ -99,7 +198,7 @@ class Window:
     global listBox
     listBox = Listbox(labelFrameOptions)
     buttonImportCSV = Button(labelFrameOptions, text="Importer depuis un fichier CSV", command=lambda:readCSVFile(listBox))
-    buttonImportURL = Button(labelFrameOptions, text="Importer depuis une URL")
+    buttonImportURL = Button(labelFrameOptions, text="Importer depuis une URL", command=lambda:addURLDialog())
 
     buttonImportCSV.pack()
     buttonImportURL.pack()
