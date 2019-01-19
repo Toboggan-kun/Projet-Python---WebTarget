@@ -6,36 +6,116 @@
 #                               CAROLINE TANG SONG
 # CLASSE                :       3 SRC 3
 # DATE                  :       11/01/2019
+import tkMessageBox
+from Tkinter import *
+from tkFileDialog import askopenfilename
+import csv
+from collections import namedtuple
+global labelFrameCampagne
+global labelFrameOptions
 
-import tkinter as tk
-from tkinter import filedialog
+def errorMessagesDialog(message):
+    tkMessageBox.showerror("Erreur", message)
+
+
+def infoMessagesDialog(message):
+    tkMessageBox.showinfo("Information", message)
+
+
+def warningMessagesDialog(message):
+    tkMessageBox.showwarning("Attention", message)
+
+def hideComponent(component):
+    component.pack_forget()
+
+def showComponent(component):
+    component.pack()
+def campagneName(entryValue, createCampagneFrame, importOptionsFrame):
+
+    if len(entryValue.get()) == 0:
+        errorMessagesDialog("Votre nom de campagne est vide.")
+    else:
+        hideComponent(createCampagneFrame)
+        showComponent(importOptionsFrame)
+
+def readCSVFile(listBox):
+
+    Header = namedtuple('Headers', 'EMails')
+    fileName = askopenfilename(initialdir="/", title="Choisir un fichier", filetypes=(("Fichiers CSV","*.csv"),("Tous les fichiers","*.*")))
+    if len(fileName) == 0:
+        infoMessagesDialog("Vous n'avez pas choisi de fichier.")
+
+    else:
+        file = open(fileName, "rb")
+        read = csv.reader(file, delimiter=",", quotechar="'")
+
+        for data in map(Header._make, read):
+            listBox.insert(END, data.EMails)
+
+def goToMainPage():
+    hideComponent(labelFrameOptions)
+    showComponent(labelFrameCampagne)
 
 
 class Window:
 
     #INITIALISATION DE LA FENETRE
-    window = tk.Tk()
+    window = Tk()
     window.geometry("500x500")
-    #TITRE PRINCIPAL
-    title = tk.Label(window, text="Bienvenue sur WebTarget")
-    title.pack()
 
-    #FRAME LABELISEE
-    labelFrame = tk.LabelFrame(window, text="Votre liste d'emails")
-    labelFrame.pack(fill="both")
-    #BOUTTON D'IMPORT DE FICHIERS CSV
-    buttonFrame = tk.Frame(labelFrame)
-    buttonFrame.pack(fill="both", expand="yes")
-    buttonAddCSV = tk.Button(
-                            buttonFrame,
-                            text="Importer un CSV",
-                            command=lambda:filedialog.askopenfilename(initialdir = "/",title = "Choisir un fichier",filetypes = (("Fichiers CSV","*.csv"),("Tous les fichiers","*.*")))
-                            )
-    buttonAddCSV.pack(side=tk.LEFT)
-    buttonTest = tk.Button(buttonFrame, text="Test", command=buttonFrame.pack_forget())
-    buttonTest.pack()
-    listBox = tk.Listbox(labelFrame)
+    #TITRE PRINCIPAL
+    title = Label(window, text="WebTarget")
+    title.configure(font=('Calibri', 25, 'bold'))
+    title.configure(height=3)
+    title.pack(fill="both")
+
+    #1 - CREATION D'UN FICHIER DE CAMPAGNE
+    global labelFrameCampagne
+
+    labelFrameCampagne = LabelFrame(window, text="Creation d'une campagne", height=2)
+    labelFrameCampagne.configure(font=('Calibri', 15))
+    labelFrameCampagne.configure(height=2)
+    labelFrameCampagne.pack(fill=X, padx=50, pady=50)
+    labelCreateCampagne = Label(labelFrameCampagne, text="Veuillez saisir un nom de campagne.")
+    labelCreateCampagne.pack()
+    global entryCampagne
+    entryCampagne = Entry(labelFrameCampagne)
+    entryCampagne.pack()
+
+    buttonCreateCampagne = Button(labelFrameCampagne, text="Valider", command=lambda : campagneName(entryCampagne, labelFrameCampagne, labelFrameOptions))
+    buttonCreateCampagne.pack()
+
+    # 1 - CREATION D'UN FICHIER DE CAMPAGNE FIN
+
+    #2 - IMPORT D'EMAILS
+
+    global labelFrameOptions
+
+    labelFrameOptions = LabelFrame(window, text="Creation de votre liste de destinataires")
+    labelFrameOptions.configure(font=('Calibri', 13))
+    labelFrameOptions.configure(height=5)
+    labelFrameOptions.pack(fill=X, padx=50, pady=50)
+    labelFrameOptions.pack_forget()
+    global listBox
+    listBox = Listbox(labelFrameOptions)
+    buttonImportCSV = Button(labelFrameOptions, text="Importer depuis un fichier CSV", command=lambda:readCSVFile(listBox))
+    buttonImportURL = Button(labelFrameOptions, text="Importer depuis une URL")
+
+    buttonImportCSV.pack()
+    buttonImportURL.pack()
+
+
     listBox.pack(expand="yes", fill="both")
+    buttonUndo = Button(labelFrameOptions, text="Retour", command=lambda: goToMainPage())
+    buttonContinue = Button(labelFrameOptions, text="Continuer")
+
+    buttonUndo.pack(side=LEFT)
+    buttonContinue.pack(side=RIGHT)
+
+
+    # 2 - IMPORT D'EMAILS FIN
+
+
     window.mainloop()
 
 
