@@ -14,36 +14,47 @@ from tkFileDialog import askopenfilename
 import csv
 from collections import namedtuple
 import scrapy
-
+import validate_email
 global labelFrameCampagne
 global labelFrameOptions
-global numberEmail
+
 global labelNumberEmail
 #global campagneNameValue
+campagneNameValue = ""
+labelNumberEmail = ""
+cpt = 0 #VERIFIE SI LE LABEL NOM DE CAMPAGNE EST DEJA CREE
+cpt2 = 0 #VERIFIE SI LE LABEL NOMBRE DE DESTINATAIRE EST DEJA CREE
+numberEmail = 0
+
 class Dyson(scrapy.Spider):
     name = "dyson"
 
     def start_requests(self):
         urls = [
+#            'http://quotes.toscrape.com/page/1/',
+#            'http://quotes.toscrape.com/page/2/',
             'http://www.thelin.net/laurent/labo/html/mailto.html',
         ]
         for url in urls:
             yield scrapy.Request(url=url, callback=self.parse)
 
     def parse(self, response):
-        i = 0
+        i=0
         mail = []
         page = response.url.split("/")[-2]
         filename = 'dyson-%s.html' % page
-
+#       with open(filename, 'wb') as f:
+#           f.write(response.body)
+#       self.log('Saved file %s' % filename)
         for line in response.body.splitlines():
             line = line.lower()
             if line.find('href="mailto') == -1:
-
+#                print "%s" % (line)
                 print "NO MAIL"
             else:
                 print"%s" % (line)
                 match = re.search(r'[\w\.-]+@[\w\.-]+',line)
+#                print"%s" % (match.group(0))
                 str1 = match.group(0)
                 mail.append(str1)
                 print "MAIL"
@@ -75,7 +86,8 @@ def showComponent(component, fill, padx, pady):
 #RENDRE DES COMPOSANTS VISIBLES OU NON - FIN
 
 def campagneName(entryValue, createCampagneFrame, importOptionsFrame):
-
+    global cpt
+    global campagneNameValue
     #VERIFIE SI UN NOM DE CAMPAGNE A ETE INDIQUE
     #SI NON, AFFICHE UN MESSAGE D'ERREUR
     if len(entryValue.get()) == 0:
@@ -86,11 +98,15 @@ def campagneName(entryValue, createCampagneFrame, importOptionsFrame):
         hideComponent(createCampagneFrame)
         showComponent(importOptionsFrame, "both", 30, 0)
         value = entryCampagne.get()
-        campagneNameValue = Label(window, text="Nom de campagne : " + value)
-        campagneNameValue.pack()
+
+        if cpt == 0:
+            campagneNameValue = Label(window, text="Nom de campagne : " + value)
+            campagneNameValue.pack()
+            cpt += 1
+        else:
+            campagneNameValue.config(text="Nom de campgne : " + value)
 
 def addURLDialog():
-
     global addURLWindow
     addURLWindow = Tk()
     addURLWindow.geometry("200x150")
@@ -112,32 +128,54 @@ def addURLDialog():
     buttonValid.pack(side=RIGHT, padx=5, pady=5)
     addURLWindow.mainloop()
 
-
 def removeDouble(isChecked, listBox):
+    global numberEmail
+    global labelNumberEmail
 
+    numberEmail = 0
     global listWithoutDouble
+
     #SI ON SOUHAITE ENLEVER LES DOUBLONS
     #ON ENREGISTRE LA LISTE INITIALE DANS UNE AUTRE LISTE ET ON RETIRE LES DOUBLONS
-
     if isChecked.get() == 1:
-
         listWithoutDouble = Listbox(labelFrameOptions)
 
-        for data in set(listBox.get(0, END)):
+        for data in sorted(list(set(listBox.get(0, END)))):
             listWithoutDouble.insert(END, data)
+            numberEmail += 1
 
-        print listWithoutDouble
         hideComponent(listBox)
-        val = addCSVValues("", listWithoutDouble)
         #AFFICHE LA NOUVELLE LISTEBOX
         listWithoutDouble.pack(fill="both", padx=5, pady=10)
-        numberEmail.set(val)
-
+        labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
 
     #SINON : ON REAFFICHE LE TABLEAU INITIAL
     else:
+        for data in set(listBox.get(0, END)):
+            numberEmail += 1
+        labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
         hideComponent(listWithoutDouble)
         showComponent(listBox, "both", 5, 10)
+
+def checkIsValidMail(listBox): #CETTE METHODE VA PINGER LE NOM DE DOMAINE DU MAIL
+
+    listValidDomain = []
+    print listBox.get(0, END)
+    for data in list(listBox.get(0, END)):
+        dataSplitted = data.split('@')
+        toPing = dataSplitted[len(dataSplitted)-1]
+        response = os.system("ping -w 5000 -n 1 " + toPing)
+
+        if response == 0:
+            print(toPing + " est pingable")
+            listValidDomain.append(toPing)  # Recuperation de la derniere partie, apres le @
+        else:
+            print(toPing + " n'est pas pingable")
+
+    print listValidDomain
+    print("Il y a " + str(len(listValidDomain)) + " adresses mail valides")
+
+
 
 def addCSVValues(read, listBox):
     val = 0
@@ -150,7 +188,7 @@ def addCSVValues(read, listBox):
         for data in listBox:
             val += 1
             listBox.insert(END, data)
-    return val
+    return val #RETOURNE LE NOMBRE D'EMAILS
 def checkURL(url, message):
 
     #PING L'URL
@@ -175,26 +213,28 @@ def checkURL(url, message):
 
 def readCSVFile(listBox):
     global read
-    global listBoxTmp
-    numberEmail = StringVar()
-    numberEmail.set(0)
-    listBoxTmp = listBox.get(0, END)  # BACKUP DE LA LISTE
+    global cpt2
+    global labelNumberEmail
+    global numberEmail
 
-
-    fileName = askopenfilename(initialdir="/", title="Choisir un fichier", filetypes=(("Fichiers CSV","*.csv"),("Tous les fichiers","*.*")))
+    numberEmail = 0
+    fileName = askopenfilename(initialdir="/", title="Choisir un fichier", filetypes=(("Fichiers CSV","*.csv"),("Tous les fichiers","*.*"))) #OUVRE L'EXPLORATEUR DE FICHIERS
+    #SI RIEN N'EST CHOISI, AFFICHAGE D'UN MESSAGE D'INFORMATION
     if len(fileName) == 0:
         infoMessagesDialog("Vous n'avez pas choisi de fichier.")
 
     else:
+        #OUVRE LE FICHIER EN MODE LECTURE BINAIRE
         file = open(fileName, "rb")
         read = csv.reader(file, delimiter=",", quotechar="'")
-        val = addCSVValues(read, listBox)
-        numberEmail.set(val)
-        print numberEmail.get()
-        labelNumberEmail = Label(window, textvariable="Nombre de destinataires : " + str(numberEmail.get()))
-        labelNumberEmail.pack()
+        numberEmail = addCSVValues(read, listBox)
+        if cpt2 == 0:
+            labelNumberEmail = Label(window, text="Nombre de destinataires : " + str(numberEmail))
+            labelNumberEmail.pack()
+        else:
+            labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
 
-    ifEmpty()
+    ifEmpty() #CHECK SI LA LISTE EST VIDE
 
 def goToMainPage():
     hideComponent(labelFrameOptions)
@@ -273,7 +313,7 @@ class Window:
     global checkDouble
     global checkIsEmailValid
     checkDouble = Checkbutton(labelButtonBox, text="Supprimer les doublons", variable=isChecked1, command=lambda:removeDouble(isChecked1, listBox))
-    checkIsEmailValid = Checkbutton(labelButtonBox, text="Afficher les emails valides", variable=isChecked2)
+    checkIsEmailValid = Checkbutton(labelButtonBox, text="Afficher les emails valides", variable=isChecked2, command=lambda:checkIsValidMail(listBox))
 
     ifEmpty()
 
