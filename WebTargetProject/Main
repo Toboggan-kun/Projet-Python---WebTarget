@@ -13,14 +13,13 @@ import re
 from tkFileDialog import askopenfilename
 import csv
 from collections import namedtuple
+import scrapy
+
 global labelFrameCampagne
 global labelFrameOptions
 global numberEmail
 global labelNumberEmail
-
-import scrapy
-
-
+#global campagneNameValue
 class Dyson(scrapy.Spider):
     name = "dyson"
 
@@ -86,7 +85,9 @@ def campagneName(entryValue, createCampagneFrame, importOptionsFrame):
     else:
         hideComponent(createCampagneFrame)
         showComponent(importOptionsFrame, "both", 30, 0)
-
+        value = entryCampagne.get()
+        campagneNameValue = Label(window, text="Nom de campagne : " + value)
+        campagneNameValue.pack()
 
 def addURLDialog():
 
@@ -221,6 +222,9 @@ class Window:
     title.configure(height=2)
     title.pack(fill="both")
 
+    campagneNameValue = ""
+    labelCampagneName = Label(window, text=campagneNameValue)
+
 
     #1 - CREATION D'UN FICHIER DE CAMPAGNE
     global labelFrameCampagne
@@ -235,6 +239,8 @@ class Window:
     entryCampagne = Entry(labelFrameCampagne)
     entryCampagne.pack()
 
+
+    labelCampagneName.pack()
     buttonCreateCampagne = Button(labelFrameCampagne, text="Valider", command=lambda:campagneName(entryCampagne, labelFrameCampagne, labelFrameOptions))
     buttonCreateCampagne.pack()
 
