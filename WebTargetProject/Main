@@ -9,11 +9,14 @@
 import tkMessageBox
 from Tkinter import *
 import os
+import re
 from tkFileDialog import askopenfilename
 import csv
 from collections import namedtuple
 global labelFrameCampagne
 global labelFrameOptions
+global numberEmail
+global labelNumberEmail
 
 import scrapy
 
@@ -68,8 +71,8 @@ def warningMessagesDialog(message):
 def hideComponent(component):
     component.pack_forget()
 
-def showComponent(component):
-    component.pack()
+def showComponent(component, fill, padx, pady):
+    component.pack(fill=fill, padx=padx, pady=pady)
 #RENDRE DES COMPOSANTS VISIBLES OU NON - FIN
 
 def campagneName(entryValue, createCampagneFrame, importOptionsFrame):
@@ -82,7 +85,7 @@ def campagneName(entryValue, createCampagneFrame, importOptionsFrame):
     #SINON ON AFFICHE L'ETAPE SUIVANTE
     else:
         hideComponent(createCampagneFrame)
-        showComponent(importOptionsFrame)
+        showComponent(importOptionsFrame, "both", 30, 0)
 
 
 def addURLDialog():
@@ -109,6 +112,44 @@ def addURLDialog():
     addURLWindow.mainloop()
 
 
+def removeDouble(isChecked, listBox):
+
+    global listWithoutDouble
+    #SI ON SOUHAITE ENLEVER LES DOUBLONS
+    #ON ENREGISTRE LA LISTE INITIALE DANS UNE AUTRE LISTE ET ON RETIRE LES DOUBLONS
+
+    if isChecked.get() == 1:
+
+        listWithoutDouble = Listbox(labelFrameOptions)
+
+        for data in set(listBox.get(0, END)):
+            listWithoutDouble.insert(END, data)
+
+        print listWithoutDouble
+        hideComponent(listBox)
+        val = addCSVValues("", listWithoutDouble)
+        #AFFICHE LA NOUVELLE LISTEBOX
+        listWithoutDouble.pack(fill="both", padx=5, pady=10)
+        numberEmail.set(val)
+
+
+    #SINON : ON REAFFICHE LE TABLEAU INITIAL
+    else:
+        hideComponent(listWithoutDouble)
+        showComponent(listBox, "both", 5, 10)
+
+def addCSVValues(read, listBox):
+    val = 0
+    Header = namedtuple('Headers', 'EMails')
+    if read is not None:
+        for data in map(Header._make, read):
+            val += 1
+            listBox.insert(END, data.EMails)
+    else:
+        for data in listBox:
+            val += 1
+            listBox.insert(END, data)
+    return val
 def checkURL(url, message):
 
     #PING L'URL
@@ -129,12 +170,16 @@ def checkURL(url, message):
     else:
         message.config(text="Impossible de contacter cet URL")
         message.config(fg="red")
-
+    ifEmpty()
 
 def readCSVFile(listBox):
+    global read
+    global listBoxTmp
+    numberEmail = StringVar()
+    numberEmail.set(0)
+    listBoxTmp = listBox.get(0, END)  # BACKUP DE LA LISTE
 
-    numberEmail = 0
-    Header = namedtuple('Headers', 'EMails')
+
     fileName = askopenfilename(initialdir="/", title="Choisir un fichier", filetypes=(("Fichiers CSV","*.csv"),("Tous les fichiers","*.*")))
     if len(fileName) == 0:
         infoMessagesDialog("Vous n'avez pas choisi de fichier.")
@@ -142,18 +187,26 @@ def readCSVFile(listBox):
     else:
         file = open(fileName, "rb")
         read = csv.reader(file, delimiter=",", quotechar="'")
-
-        for data in map(Header._make, read):
-            numberEmail += 1
-            listBox.insert(END, data.EMails)
-
-        labelNumberEmail = Label(window, text="Nombre de destinataires : " + str(numberEmail))
+        val = addCSVValues(read, listBox)
+        numberEmail.set(val)
+        print numberEmail.get()
+        labelNumberEmail = Label(window, textvariable="Nombre de destinataires : " + str(numberEmail.get()))
         labelNumberEmail.pack()
+
+    ifEmpty()
 
 def goToMainPage():
     hideComponent(labelFrameOptions)
-    showComponent(labelFrameCampagne)
+    showComponent(labelFrameCampagne, "both", 30, 0)
 
+def ifEmpty():
+
+    if listBox.size() == 0:
+        checkDouble.config(state=DISABLED)
+        checkIsEmailValid.config(state=DISABLED)
+    else:
+        checkDouble.config(state=NORMAL)
+        checkIsEmailValid.config(state=NORMAL)
 
 class Window:
 
@@ -165,8 +218,9 @@ class Window:
     #TITRE PRINCIPAL
     title = Label(window, text="WebTarget")
     title.configure(font=('Calibri', 25, 'bold'))
-    title.configure(height=3)
+    title.configure(height=2)
     title.pack(fill="both")
+
 
     #1 - CREATION D'UN FICHIER DE CAMPAGNE
     global labelFrameCampagne
@@ -174,7 +228,7 @@ class Window:
     labelFrameCampagne = LabelFrame(window, text="Creation d'une campagne", height=2)
     labelFrameCampagne.configure(font=('Calibri', 15))
     labelFrameCampagne.configure(height=2)
-    labelFrameCampagne.pack(fill=X, padx=50, pady=50)
+    labelFrameCampagne.pack(fill="both", padx=30)
     labelCreateCampagne = Label(labelFrameCampagne, text="Veuillez saisir un nom de campagne.")
     labelCreateCampagne.pack()
     global entryCampagne
@@ -192,24 +246,40 @@ class Window:
 
     labelFrameOptions = LabelFrame(window, text="Creation de votre liste de destinataires")
     labelFrameOptions.configure(font=('Calibri', 13))
-    labelFrameOptions.configure(height=5)
-    labelFrameOptions.pack(fill=X, padx=50, pady=50)
+    labelFrameOptions.configure()
+    labelFrameOptions.pack(fill="both")
     labelFrameOptions.pack_forget()
     global listBox
     listBox = Listbox(labelFrameOptions)
-    buttonImportCSV = Button(labelFrameOptions, text="Importer depuis un fichier CSV", command=lambda:readCSVFile(listBox))
-    buttonImportURL = Button(labelFrameOptions, text="Importer depuis une URL", command=lambda:addURLDialog())
 
+
+    #CE LABEL VA SERVIR DE BOX POUR LES BOUTONS
+    labelButtonBox = Label(labelFrameOptions)
+    labelButtonBox.pack(fill=X, padx=0, pady=15)
+    buttonImportCSV = Button(labelButtonBox, text="Importer depuis un fichier CSV",
+                             command=lambda: readCSVFile(listBox))
+    buttonImportURL = Button(labelButtonBox, text="Importer depuis une URL", command=lambda: addURLDialog())
     buttonImportCSV.pack()
     buttonImportURL.pack()
+    global isChecked1, isChecked2
+    isChecked1 = IntVar()
+    isChecked2 = IntVar()
+    global checkDouble
+    global checkIsEmailValid
+    checkDouble = Checkbutton(labelButtonBox, text="Supprimer les doublons", variable=isChecked1, command=lambda:removeDouble(isChecked1, listBox))
+    checkIsEmailValid = Checkbutton(labelButtonBox, text="Afficher les emails valides", variable=isChecked2)
 
+    ifEmpty()
 
-    listBox.pack(expand="yes", fill="both")
-    buttonUndo = Button(labelFrameOptions, text="Retour", command=lambda: goToMainPage())
-    buttonContinue = Button(labelFrameOptions, text="Continuer")
+    checkDouble.pack(side=BOTTOM)
+    checkIsEmailValid.pack(side=BOTTOM)
+    buttonUndo = Button(labelFrameOptions, text="< Retour", command=lambda: goToMainPage())
+    buttonContinue = Button(labelFrameOptions, text="Continuer >")
 
     buttonUndo.pack(side=LEFT)
     buttonContinue.pack(side=RIGHT)
+
+    listBox.pack(fill="both", padx=5, pady=10)
 
 
     # 2 - IMPORT D'EMAILS FIN
