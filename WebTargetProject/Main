@@ -7,64 +7,30 @@
 # CLASSE                :       3 SRC 3
 # DATE                  :       11/01/2019
 import tkMessageBox
+
 from Tkinter import *
 import os
-import re
 from tkFileDialog import askopenfilename
 import csv
 from collections import namedtuple
 import scrapy
-import validate_email
+
+isChecked1 = 0
+isChecked2 = 0
 global labelFrameCampagne
 global labelFrameOptions
-
 global labelNumberEmail
+global listValidDomain
 #global campagneNameValue
 campagneNameValue = ""
 labelNumberEmail = ""
+listWithoutDouble = ""
 cpt = 0 #VERIFIE SI LE LABEL NOM DE CAMPAGNE EST DEJA CREE
 cpt2 = 0 #VERIFIE SI LE LABEL NOMBRE DE DESTINATAIRE EST DEJA CREE
+cpt3 = 0 #VERIFIE SI LA LISTEBOX EXISTE DEJA OU NON (VERIFICATION DES MAILS VALIDES)
+cpt4 = 0 #VERIFIE SI LA LISTEBOX EXISTE DEJA OU NON (VERIFICATION DES DOUBLONS)
 numberEmail = 0
-
-class Dyson(scrapy.Spider):
-    name = "dyson"
-
-    def start_requests(self):
-        urls = [
-#            'http://quotes.toscrape.com/page/1/',
-#            'http://quotes.toscrape.com/page/2/',
-            'http://www.thelin.net/laurent/labo/html/mailto.html',
-        ]
-        for url in urls:
-            yield scrapy.Request(url=url, callback=self.parse)
-
-    def parse(self, response):
-        i=0
-        mail = []
-        page = response.url.split("/")[-2]
-        filename = 'dyson-%s.html' % page
-#       with open(filename, 'wb') as f:
-#           f.write(response.body)
-#       self.log('Saved file %s' % filename)
-        for line in response.body.splitlines():
-            line = line.lower()
-            if line.find('href="mailto') == -1:
-#                print "%s" % (line)
-                print "NO MAIL"
-            else:
-                print"%s" % (line)
-                match = re.search(r'[\w\.-]+@[\w\.-]+',line)
-#                print"%s" % (match.group(0))
-                str1 = match.group(0)
-                mail.append(str1)
-                print "MAIL"
-                i += 1
-        print(mail)
-        with open('test.csv','wb') as csvfile:
-            filewriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting= csv.QUOTE_MINIMAL)
-            filewriter.writerow(mail)
-        print "nombre de mail : %d" % (i)
-
+listBox = ""
 #MESSAGES D'ALTERTES
 def errorMessagesDialog(message):
     tkMessageBox.showerror("Erreur", message)
@@ -128,90 +94,187 @@ def addURLDialog():
     buttonValid.pack(side=RIGHT, padx=5, pady=5)
     addURLWindow.mainloop()
 
-def removeDouble(isChecked, listBox):
+def removeDouble(isChecked, isChecked2, listBox):
+
     global numberEmail
     global labelNumberEmail
+    global cpt4
+    global listValidDomain
 
     numberEmail = 0
+
+    #global listBoth
     global listWithoutDouble
 
     #SI ON SOUHAITE ENLEVER LES DOUBLONS
     #ON ENREGISTRE LA LISTE INITIALE DANS UNE AUTRE LISTE ET ON RETIRE LES DOUBLONS
     if isChecked.get() == 1:
-        listWithoutDouble = Listbox(labelFrameOptions)
+        hideComponent(listBox)
+        if cpt4 == 0: #SI LA LISTE BOX N'EXISTE PAS
 
+            listWithoutDouble = Listbox(labelFrameOptions)
+            if isChecked2.get() == 1:
+                hideComponent(listValidDomain)
+                array = sorted(list(set(listValidDomain.get(0, END))))
+            elif isChecked.get() == 1:
+                try:
+                    hideComponent(listValidDomain)
+                except:
+                    print "existe pas encore"
+                array = sorted(list(set(listBox.get(0, END))))
+
+            for data in array:
+                listWithoutDouble.insert(END, data)
+
+                numberEmail += 1
+
+            #AFFICHE LA NOUVELLE LISTEBOX
+
+            listWithoutDouble.pack(fill="both", padx=5, pady=10)
+            labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
+
+            cpt4 += 1
+
+            print listWithoutDouble.get(0, END)
+        else: #SINON ON AFFICHE LA LISTBOX DEJA CREEE
+            for data in sorted(list(set(listWithoutDouble.get(0, END)))):
+                numberEmail += 1
+            showComponent(listWithoutDouble, "both", 5, 10)
+            labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
+    # SINON : ON REAFFICHE LE TABLEAU INITIAL
+    elif isChecked.get() == 0 and isChecked2.get() == 1:
+        hideComponent(listWithoutDouble)
+        listValidDomain.delete(0, END)
+        for data in list(listBox.get(0, END)):
+            dataSplitted = data.split('@')
+            toPing = dataSplitted[len(dataSplitted)-1]
+            response = os.system("ping -w 5000 -n 1 " + toPing)
+            if response == 0:
+                listValidDomain.insert(END, data)  # Recuperation de la derniere partie, apres le @
+                numberEmail += 1
+        labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
+        showComponent(listValidDomain, "both", 5, 10)
+    else:
+
+        hideComponent(listWithoutDouble)
+
+        if isChecked2.get() == 1:
+            showComponent(listValidDomain, "both", 5, 10)
+            array1 = listBox.get(0, END)
+        else:
+            showComponent(listBox, "both", 5, 10)
+            array1 = listValidDomain.get(0, END)
+        for data in array1:
+            numberEmail += 1
+        labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
+
+def checkIsValidMail(checked, checked2, listbox): #CETTE METHODE VA PINGER LE NOM DE DOMAINE DU MAIL
+    global listWithoutDouble
+    global numberEmail
+    global labelNumberEmail
+    global listBox
+    global cpt3
+    global listValidDomain
+    print checked2.get()
+    numberEmail = 0
+    print listWithoutDouble
+    if cpt3 == 0:
+        listValidDomain = Listbox(labelFrameOptions)
+        array = Listbox(labelFrameOptions)
+
+    print checked.get()
+
+
+    if checked.get() == 1: #EFFECTUE LE TRI DES MAILS VALIDES
+
+        if checked2.get() == 1:
+            array = list(listWithoutDouble.get(0, END))
+            hideComponent(listWithoutDouble)
+        else:
+            array = list(listbox.get(0, END))
+        for data in array:
+            dataSplitted = data.split('@')
+            toPing = dataSplitted[len(dataSplitted)-1]
+            response = os.system("ping -w 5000 -n 1 " + toPing)
+            if response == 0:
+                print(toPing + " est pingable")
+                listValidDomain.insert(END, data)  # Recuperation de la derniere partie, apres le @
+                numberEmail += 1
+
+        labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
+        hideComponent(listBox)
+        listValidDomain.pack(fill="both", padx=5, pady=10)
+        cpt3 += 1
+    elif checked.get() == 0 and checked2.get() == 1:
+        hideComponent(listValidDomain)
+        listWithoutDouble.delete(0, END)
         for data in sorted(list(set(listBox.get(0, END)))):
             listWithoutDouble.insert(END, data)
+            print numberEmail
             numberEmail += 1
-
-        hideComponent(listBox)
-        #AFFICHE LA NOUVELLE LISTEBOX
-        listWithoutDouble.pack(fill="both", padx=5, pady=10)
-        labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
-
-    #SINON : ON REAFFICHE LE TABLEAU INITIAL
-    else:
-        for data in set(listBox.get(0, END)):
-            numberEmail += 1
-        labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
-        hideComponent(listWithoutDouble)
+        showComponent(listWithoutDouble, "both", 5, 10)
+    elif checked.get() == 0 and checked2.get() == 0:
+        hideComponent(listValidDomain)
         showComponent(listBox, "both", 5, 10)
+    else:
 
-def checkIsValidMail(listBox): #CETTE METHODE VA PINGER LE NOM DE DOMAINE DU MAIL
-
-    listValidDomain = []
-    print listBox.get(0, END)
-    for data in list(listBox.get(0, END)):
-        dataSplitted = data.split('@')
-        toPing = dataSplitted[len(dataSplitted)-1]
-        response = os.system("ping -w 5000 -n 1 " + toPing)
-
-        if response == 0:
-            print(toPing + " est pingable")
-            listValidDomain.append(toPing)  # Recuperation de la derniere partie, apres le @
+        hideComponent(listValidDomain)
+        if checked.get() == 1:
+            array1 = str(listBox)
+            showComponent(listBox, "both", 5, 10)
         else:
-            print(toPing + " n'est pas pingable")
-
-    print listValidDomain
-    print("Il y a " + str(len(listValidDomain)) + " adresses mail valides")
-
+            array1 = str(listValidDomain)
+            showComponent(listValidDomain, "both", 5, 10)
+        for data in array1:
+            numberEmail += 1
+        labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
 
 
 def addCSVValues(read, listBox):
+
     val = 0
+    #listBox = Listbox(listBox)
     Header = namedtuple('Headers', 'EMails')
+    listBox.delete(0, END)
     if read is not None:
         for data in map(Header._make, read):
             val += 1
-            listBox.insert(END, data.EMails)
+            Listbox(listBox.insert(0, data.EMails))
     else:
         for data in listBox:
+
             val += 1
-            listBox.insert(END, data)
+            listBox.insert(0, data)
+
     return val #RETOURNE LE NOMBRE D'EMAILS
 def checkURL(url, message):
 
     #PING L'URL
-    response = os.system("ping " + url.get())
+    response = os.system("ping -n 1 " + url.get())
 
     #VERIFIE SI LE LABEL EXISTE DEJA POUR EVITER DE CREER DES DOUBLONS A CHAQUE LANCEMENT DE LA FONCTION
-    if message.winfo_exists() == 1:
-        print "Existe deja"
-
-    else:
+    if message.winfo_exists() != 1:
         message = Label(labelFrameMessage, text="Contact en cours avec" + url.get())
         message.pack(side=TOP, fill=X)
 
     #SI LE PING A FONCTIONNE : FERME LA FENETRE ET AFFICHE LES URLS TROUVEES
     if response == 0:
-        addURLWindow.destroy()
+        os.system("scrapy startproject SpiderCrawl")
+        os.system("scrapy genspider crawler SpiderCrawl")
+        path = os.getcwd()
+        os.chdir(path + "\SpiderCrawl\SpiderCrawl\spiders")
+        os.system("dir")
+
+        os.system("scrapy crawl crawler")
+        #addURLWindow.destroy()
     #SINON : AFFICHE UN MESSAGE D'ERREUR
     else:
         message.config(text="Impossible de contacter cet URL")
         message.config(fg="red")
-    ifEmpty()
+    ifEmpty(listBox)
 
 def readCSVFile(listBox):
+
     global read
     global cpt2
     global labelNumberEmail
@@ -227,20 +290,23 @@ def readCSVFile(listBox):
         #OUVRE LE FICHIER EN MODE LECTURE BINAIRE
         file = open(fileName, "rb")
         read = csv.reader(file, delimiter=",", quotechar="'")
+
         numberEmail = addCSVValues(read, listBox)
+
         if cpt2 == 0:
             labelNumberEmail = Label(window, text="Nombre de destinataires : " + str(numberEmail))
             labelNumberEmail.pack()
+            cpt2 += 1
         else:
             labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
 
-    ifEmpty() #CHECK SI LA LISTE EST VIDE
+    ifEmpty(listBox) #CHECK SI LA LISTE EST VIDE
 
 def goToMainPage():
     hideComponent(labelFrameOptions)
     showComponent(labelFrameCampagne, "both", 30, 0)
 
-def ifEmpty():
+def ifEmpty(listBox):
 
     if listBox.size() == 0:
         checkDouble.config(state=DISABLED)
@@ -308,14 +374,15 @@ class Window:
     buttonImportCSV.pack()
     buttonImportURL.pack()
     global isChecked1, isChecked2
+
     isChecked1 = IntVar()
     isChecked2 = IntVar()
     global checkDouble
     global checkIsEmailValid
-    checkDouble = Checkbutton(labelButtonBox, text="Supprimer les doublons", variable=isChecked1, command=lambda:removeDouble(isChecked1, listBox))
-    checkIsEmailValid = Checkbutton(labelButtonBox, text="Afficher les emails valides", variable=isChecked2, command=lambda:checkIsValidMail(listBox))
+    checkDouble = Checkbutton(labelButtonBox, text="Supprimer les doublons", variable=isChecked1, command=lambda:removeDouble(isChecked1, isChecked2, listBox))
+    checkIsEmailValid = Checkbutton(labelButtonBox, text="Afficher les emails valides", variable=isChecked2, command=lambda:checkIsValidMail(isChecked2, isChecked1, listBox))
 
-    ifEmpty()
+    ifEmpty(listBox)
 
     checkDouble.pack(side=BOTTOM)
     checkIsEmailValid.pack(side=BOTTOM)
