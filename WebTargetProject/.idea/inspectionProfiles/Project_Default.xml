@@ -5,6 +5,7 @@
       <option name="ignoredIdentifiers">
         <list>
           <option value="set.pack" />
+          <option value="Main" />
         </list>
       </option>
     </inspection_tool>
