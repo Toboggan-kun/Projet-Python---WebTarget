@@ -8,6 +8,7 @@
 # DATE                  :       11/01/2019
 
 import tkMessageBox
+import crawler
 from Tkinter import *
 import os
 from tkFileDialog import askopenfilename
@@ -251,7 +252,7 @@ def checkURL(url, message):
     tmpUrl = "http://www.thelin.net/laurent/labo/html/mailto.html"
 
     #PING L'URL
-    response = os.system("ping -n 1 " + url.get())
+    response = os.system("ping -n 2 " + url.get())
 
     #VERIFIE SI LE LABEL EXISTE DEJA POUR EVITER DE CREER DES DOUBLONS A CHAQUE LANCEMENT DE LA FONCTION
     if message.winfo_exists() != 1:
@@ -260,19 +261,15 @@ def checkURL(url, message):
 
     #SI LE PING A FONCTIONNE : FERME LA FENETRE ET AFFICHE LES URLS TROUVEES
     if response == 0:
-
-        os.system("scrapy startproject SpiderCrawl")
         path = os.getcwd()
-        os.chdir(path + "\SpiderCrawl")
-        os.system("scrapy genspider crawler SpiderCrawl")
-
-        os.chdir(path + "\SpiderCrawl\SpiderCrawl\spiders")
-
-
-        os.system("dir")
-
+        os.chdir(path + "\Module\SpiderCrawl\SpiderCrawl\spiders")
         os.system("scrapy crawl crawler")
+
         addURLWindow.destroy()
+        listBox.delete(0, END)
+        readCSVFile(listBox, 0, "test.csv")
+
+
 
     #SINON : AFFICHE UN MESSAGE D'ERREUR
     else:
@@ -280,7 +277,7 @@ def checkURL(url, message):
         message.config(fg="red")
     ifEmpty(listBox)
 
-def readCSVFile(listBox):
+def readCSVFile(listBox, option, fileToRead):
 
     global read
     global cpt2
@@ -288,24 +285,26 @@ def readCSVFile(listBox):
     global numberEmail
 
     numberEmail = 0
-    fileName = askopenfilename(initialdir="/", title="Choisir un fichier", filetypes=(("Fichiers CSV","*.csv"),("Tous les fichiers","*.*"))) #OUVRE L'EXPLORATEUR DE FICHIERS
-    #SI RIEN N'EST CHOISI, AFFICHAGE D'UN MESSAGE D'INFORMATION
-    if len(fileName) == 0:
-        infoMessagesDialog("Vous n'avez pas choisi de fichier.")
-
+    if option == 1:
+        fileName = askopenfilename(initialdir="/", title="Choisir un fichier", filetypes=(("Fichiers CSV","*.csv"),("Tous les fichiers","*.*"))) #OUVRE L'EXPLORATEUR DE FICHIERS
+        #SI RIEN N'EST CHOISI, AFFICHAGE D'UN MESSAGE D'INFORMATION
+        if len(fileName) == 0:
+            infoMessagesDialog("Vous n'avez pas choisi de fichier.")
     else:
-        #OUVRE LE FICHIER EN MODE LECTURE BINAIRE
-        file = open(fileName, "rb")
-        read = csv.reader(file, delimiter=",", quotechar="'")
+        fileName = fileToRead
 
-        numberEmail = addCSVValues(read, listBox)
+    #OUVRE LE FICHIER EN MODE LECTURE BINAIRE
+    file = open(fileName, "rb")
+    read = csv.reader(file, delimiter=",", quotechar="'")
 
-        if cpt2 == 0:
-            labelNumberEmail = Label(window, text="Nombre de destinataires : " + str(numberEmail))
-            labelNumberEmail.pack()
-            cpt2 += 1
-        else:
-            labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
+    numberEmail = addCSVValues(read, listBox)
+
+    if cpt2 == 0:
+        labelNumberEmail = Label(window, text="Nombre de destinataires : " + str(numberEmail))
+        labelNumberEmail.pack()
+        cpt2 += 1
+    else:
+        labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
 
     ifEmpty(listBox) #CHECK SI LA LISTE EST VIDE
 
@@ -377,7 +376,7 @@ class Window:
     labelButtonBox = Label(labelFrameOptions)
     labelButtonBox.pack(fill=X, padx=0, pady=15)
     buttonImportCSV = Button(labelButtonBox, text="Importer depuis un fichier CSV",
-                             command=lambda: readCSVFile(listBox))
+                             command=lambda: readCSVFile(listBox, 1, ""))
     buttonImportURL = Button(labelButtonBox, text="Importer depuis une URL", command=lambda: addURLDialog())
     buttonImportCSV.pack()
     buttonImportURL.pack()

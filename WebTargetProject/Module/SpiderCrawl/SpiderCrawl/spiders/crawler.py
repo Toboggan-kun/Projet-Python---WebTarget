@@ -2,10 +2,9 @@
 import scrapy
 import csv
 import re
-from Tkinter import *
+
 class CrawlerSpider(scrapy.Spider):
     name = 'crawler'
-    mail = []
 
     def start_requests(self):
         urls = [
@@ -17,7 +16,8 @@ class CrawlerSpider(scrapy.Spider):
             yield scrapy.Request(url=url, callback=self.parse)
 
     def parse(self, response):
-        global mail
+
+        mail = []
         i = 0
 
         page = response.url.split("/")[-2]
@@ -39,9 +39,9 @@ class CrawlerSpider(scrapy.Spider):
                 print "MAIL"
                 i += 1
 
-        print(mail)
         with open('test.csv', 'wb') as csvfile:
-            filewriter = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            filewriter = csv.writer(csvfile, delimiter='\n', quotechar="|", quoting=csv.QUOTE_MINIMAL)
             filewriter.writerow(mail)
         print "nombre de mail : %d" % (i)
+
 
