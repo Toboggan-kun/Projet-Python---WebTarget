@@ -6,8 +6,11 @@
 #                               CAROLINE TANG SONG
 # CLASSE                :       3 SRC 3
 # DATE                  :       11/01/2019
-
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 import tkMessageBox
+import Email
 import crawler
 from Tkinter import *
 import os
@@ -27,8 +30,14 @@ sendEmailFrame = ""
 campagneNameValue = ""
 labelNumberEmail = ""
 sendEmailFrame = ""
+entryDestination = ""
+entrySource = ""
+entryObject = ""
+messageArea = ""
 sendListEmailFrame = ""
 listWithoutDouble = ""
+newList = ""
+emailsValue = []
 cpt = 0 #VERIFIE SI LE LABEL NOM DE CAMPAGNE EST DEJA CREE
 cpt2 = 0 #VERIFIE SI LE LABEL NOMBRE DE DESTINATAIRE EST DEJA CREE
 cpt3 = 0 #VERIFIE SI LA LISTEBOX EXISTE DEJA OU NON (VERIFICATION DES MAILS VALIDES)
@@ -152,7 +161,7 @@ def removeDouble(isChecked, isChecked2, listBox):
         for data in list(listBox.get(0, END)):
             dataSplitted = data.split('@')
             toPing = dataSplitted[len(dataSplitted)-1]
-            response = os.system("ping -w 5000 -n 1 " + toPing)
+            response = doPing(toPing)
             if response == 0:
                 listValidDomain.insert(END, data)  # Recuperation de la derniere partie, apres le @
                 numberEmail += 1
@@ -171,7 +180,9 @@ def removeDouble(isChecked, isChecked2, listBox):
         for data in array1:
             numberEmail += 1
         labelNumberEmail.config(text="Nombre de destinataires : " + str(numberEmail))
-
+def doPing(value):
+    response = os.system("ping -w 5000 -n 1 " + value)
+    return response
 def checkIsValidMail(checked, checked2, listbox): #CETTE METHODE VA PINGER LE NOM DE DOMAINE DU MAIL
     global listWithoutDouble
     global numberEmail
@@ -199,7 +210,7 @@ def checkIsValidMail(checked, checked2, listbox): #CETTE METHODE VA PINGER LE NO
         for data in array:
             dataSplitted = data.split('@')
             toPing = dataSplitted[len(dataSplitted)-1]
-            response = os.system("ping -w 5000 -n 1 " + toPing)
+            response = doPing(toPing)
             if response == 0:
                 listValidDomain.insert(END, data)  # Recuperation de la derniere partie, apres le @
                 numberEmail += 1
@@ -255,7 +266,7 @@ def checkURL(url, message):
     tmpUrl = "http://www.thelin.net/laurent/labo/html/mailto.html"
 
     #PING L'URL
-    response = os.system("ping -n 2 " + url.get())
+    response = doPing(url.get())
 
     #VERIFIE SI LE LABEL EXISTE DEJA POUR EVITER DE CREER DES DOUBLONS A CHAQUE LANCEMENT DE LA FONCTION
     if message.winfo_exists() != 1:
@@ -279,24 +290,47 @@ def checkURL(url, message):
         message.config(text="Impossible de contacter cet URL")
         message.config(fg="red")
     ifEmpty(listBox)
-def nextStep(list, frame):
+def nextStep(frame):
+    global isChecked1, isChecked2
     global sendEmailFrame
     global sendListEmailFrame
     global listBox
+    global listWithoutDouble
+    global listValidDomain
+    global entryDestination
+    global newList
 
-    if list.size() == 0: #SI LA LISTE EST VIDE
+    if isChecked1.get() == 1 and isChecked2.get() == 0:
+        list = listWithoutDouble.get(0, END)
+
+    elif isChecked1.get() == 0 and isChecked2.get() == 1:
+
+        list = listValidDomain.get(0, END)
+
+    elif isChecked1.get() == 1 and isChecked2.get() == 1:
+        if listWithoutDouble.winfo_ismapped():
+            list = listWithoutDouble.get(0, END)
+        else:
+            list = listValidDomain.get(0, END)
+    else:
+        list = listBox.get(0, END)
+
+    if len(list) == 0: #SI LA LISTE EST VIDE
         errorMessagesDialog("Votre liste d'emails est vide.")
     else:
 
         hideComponent(frame)
-        showComponent(sendListEmailFrame, "both", 0, 0)
-        showComponent(sendEmailFrame, "both", 0, 0)
+        #showComponent(sendListEmailFrame, "both", 0, 0)
+        #showComponent(sendEmailFrame, "both", 0, 0)
+        sendEmailFrame.pack(side=RIGHT, fill="both", padx=5, expand=TRUE)
+        sendListEmailFrame.pack(side=LEFT, fill=Y, padx=5)
 
         newList = Listbox(sendListEmailFrame)
-        newList.pack()
-        print listBox.get(0, END)
-        for data in listBox.get(0, END):
+        newList.pack(fill="both")
+        for data in list:
             newList.insert(END, data)
+
+
 
 
 def readCSVFile(listBox, option, fileToRead):
@@ -343,9 +377,58 @@ def ifEmpty(listBox):
         checkDouble.config(state=NORMAL)
         checkIsEmailValid.config(state=NORMAL)
 
+def addEmailToEntry(list, entry):
+
+    global emailsValue
+    try:
+        value = list.get(list.curselection())
+    except:
+        errorMessagesDialog("Vous n'avez pas selectione de valeur.")
+    else:
+
+        verify = value.split('@')
+        verify = verify[len(verify) - 1]
+        response = doPing(verify)
+        if response != 0:
+            errorMessagesDialog("Cet email est invalide.")
+        else:
+            entry.insert(END, value)
+            entry.insert(END, ";")
+            emailsValue.insert(0, value)
+            print emailsValue
+
+
+def sendEmail():
+
+
+    global emailsValue
+    global entrySource, entryObject, messageArea
+
+
+    print emailsValue
+
+
+    msg = MIMEMultipart()
+    msg['From'] = entrySource.get()
+    msg['To'] = '; '.join(emailsValue)
+    msg['Subject'] = entryObject.get()
+    msg.attach(MIMEText(messageArea.get("1.0", END)))
+    mailserver = smtplib.SMTP('smtp.gmail.com', 587)
+    mailserver.ehlo()
+    mailserver.starttls()
+    mailserver.login(entrySource.get(), 'Test?123')
+    mailserver.sendmail(entrySource.get(), emailsValue, msg.as_string())
+    mailserver.quit()
+
+    infoMessagesDialog("Mail envoye ! ")
+
+
 class Window:
     global sendListEmailFrame
     global sendEmailFrame
+    global newList
+    global entryDestination
+    global entryObject, entrySource, messageArea
 
 
     #INITIALISATION DE LA FENETRE
@@ -430,19 +513,31 @@ class Window:
     entryDestination = Entry(sendEmailFrame)
     labelSource = Label(sendEmailFrame, text="Expediteur")
     entrySource = Entry(sendEmailFrame)
+    entrySource.insert(0, "src3esgi@gmail.com")
+    entrySource.config(state="disabled")
     labelObject = Label(sendEmailFrame, text="Objet")
     entryObject = Entry(sendEmailFrame)
+    labelMessage = Label(sendEmailFrame, text="Message")
+    messageArea = Text(sendEmailFrame)
+    #buttonSend = Button(sendEmailFrame, text="Envoyer", command=lambda : sendEmail(entrySource.get(), entryObject.get(), messageArea.get()))
+    buttonSend = Button(sendEmailFrame, text="Envoyer",
+                        command=lambda: sendEmail())
+    buttonAdd = Button(sendListEmailFrame, text="Ajouter", command=lambda:addEmailToEntry(newList, entryDestination))
+    buttonAdd.pack()
 
 
     labelDestination.pack()
-    entryDestination.pack()
+    entryDestination.pack(fill=X, padx=10)
     labelSource.pack()
-    entrySource.pack()
+    entrySource.pack(fill=X, padx=10)
     labelObject.pack()
-    entryObject.pack()
+    entryObject.pack(fill=X, padx=10)
+    labelMessage.pack()
+    messageArea.pack(fill=X, padx=10, expand=FALSE)
+    buttonSend.pack(side=RIGHT, padx=10)
 
     buttonUndo = Button(labelFrameOptions, text="< Retour", command=lambda: goToMainPage())
-    buttonContinue = Button(labelFrameOptions, text="Continuer >", command=lambda : nextStep(listBox, labelFrameOptions))
+    buttonContinue = Button(labelFrameOptions, text="Continuer >", command=lambda : nextStep(labelFrameOptions))
 
     buttonUndo.pack(side=LEFT)
     buttonContinue.pack(side=RIGHT)
