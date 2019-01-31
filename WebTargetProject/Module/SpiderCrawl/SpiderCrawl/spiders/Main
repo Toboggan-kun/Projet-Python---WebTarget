@@ -23,8 +23,11 @@ global labelFrameOptions
 global labelNumberEmail
 global listValidDomain
 #global campagneNameValue
+sendEmailFrame = ""
 campagneNameValue = ""
 labelNumberEmail = ""
+sendEmailFrame = ""
+sendListEmailFrame = ""
 listWithoutDouble = ""
 cpt = 0 #VERIFIE SI LE LABEL NOM DE CAMPAGNE EST DEJA CREE
 cpt2 = 0 #VERIFIE SI LE LABEL NOMBRE DE DESTINATAIRE EST DEJA CREE
@@ -276,6 +279,25 @@ def checkURL(url, message):
         message.config(text="Impossible de contacter cet URL")
         message.config(fg="red")
     ifEmpty(listBox)
+def nextStep(list, frame):
+    global sendEmailFrame
+    global sendListEmailFrame
+    global listBox
+
+    if list.size() == 0: #SI LA LISTE EST VIDE
+        errorMessagesDialog("Votre liste d'emails est vide.")
+    else:
+
+        hideComponent(frame)
+        showComponent(sendListEmailFrame, "both", 0, 0)
+        showComponent(sendEmailFrame, "both", 0, 0)
+
+        newList = Listbox(sendListEmailFrame)
+        newList.pack()
+        print listBox.get(0, END)
+        for data in listBox.get(0, END):
+            newList.insert(END, data)
+
 
 def readCSVFile(listBox, option, fileToRead):
 
@@ -322,12 +344,14 @@ def ifEmpty(listBox):
         checkIsEmailValid.config(state=NORMAL)
 
 class Window:
+    global sendListEmailFrame
+    global sendEmailFrame
 
 
     #INITIALISATION DE LA FENETRE
     global window
     window = Tk()
-    window.geometry("500x500")
+    window.geometry("800x800")
 
     #TITRE PRINCIPAL
     title = Label(window, text="WebTarget")
@@ -365,7 +389,6 @@ class Window:
 
     labelFrameOptions = LabelFrame(window, text="Creation de votre liste de destinataires")
     labelFrameOptions.configure(font=('Calibri', 13))
-    labelFrameOptions.configure()
     labelFrameOptions.pack(fill="both")
     labelFrameOptions.pack_forget()
     global listBox
@@ -393,11 +416,39 @@ class Window:
 
     checkDouble.pack(side=BOTTOM)
     checkIsEmailValid.pack(side=BOTTOM)
+
+    #PAGE ENVOI DE MAIL
+    sendListEmailFrame = LabelFrame(window, text="Ma liste d'emails")
+    sendListEmailFrame.configure(font=('Calibri', 13))
+
+
+    sendEmailFrame = LabelFrame(window, text="Envoyer un email")
+    sendEmailFrame.configure(font=('Calibri', 13))
+
+
+    labelDestination = Label(sendEmailFrame, text="Destinataire(s)")
+    entryDestination = Entry(sendEmailFrame)
+    labelSource = Label(sendEmailFrame, text="Expediteur")
+    entrySource = Entry(sendEmailFrame)
+    labelObject = Label(sendEmailFrame, text="Objet")
+    entryObject = Entry(sendEmailFrame)
+
+
+    labelDestination.pack()
+    entryDestination.pack()
+    labelSource.pack()
+    entrySource.pack()
+    labelObject.pack()
+    entryObject.pack()
+
     buttonUndo = Button(labelFrameOptions, text="< Retour", command=lambda: goToMainPage())
-    buttonContinue = Button(labelFrameOptions, text="Continuer >")
+    buttonContinue = Button(labelFrameOptions, text="Continuer >", command=lambda : nextStep(listBox, labelFrameOptions))
 
     buttonUndo.pack(side=LEFT)
     buttonContinue.pack(side=RIGHT)
+
+
+
 
     listBox.pack(fill="both", padx=5, pady=10)
 

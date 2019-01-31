@@ -28,20 +28,17 @@ class CrawlerSpider(scrapy.Spider):
         for line in response.body.splitlines():
             line = line.lower()
             if line.find('href="mailto') == -1:
-                #                print "%s" % (line)
                 print "NO MAIL"
             else:
-                print"%s" % (line)
                 match = re.search(r'[\w\.-]+@[\w\.-]+', line)
                 #                print"%s" % (match.group(0))
                 str1 = match.group(0)
                 mail.append(str1)
-                print "MAIL"
                 i += 1
 
         with open('test.csv', 'wb') as csvfile:
             filewriter = csv.writer(csvfile, delimiter='\n', quotechar="|", quoting=csv.QUOTE_MINIMAL)
             filewriter.writerow(mail)
-        print "nombre de mail : %d" % (i)
+
 
 
