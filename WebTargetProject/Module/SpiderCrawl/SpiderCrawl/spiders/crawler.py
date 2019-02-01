@@ -2,11 +2,13 @@
 import scrapy
 import csv
 import re
-
+import windowmain
 class CrawlerSpider(scrapy.Spider):
     name = 'crawler'
 
+
     def start_requests(self):
+
         urls = [
             #            'http://quotes.toscrape.com/page/1/',
             #            'http://quotes.toscrape.com/page/2/',
@@ -30,6 +32,7 @@ class CrawlerSpider(scrapy.Spider):
             if line.find('href="mailto') == -1:
                 print "NO MAIL"
             else:
+                print line
                 match = re.search(r'[\w\.-]+@[\w\.-]+', line)
                 #                print"%s" % (match.group(0))
                 str1 = match.group(0)

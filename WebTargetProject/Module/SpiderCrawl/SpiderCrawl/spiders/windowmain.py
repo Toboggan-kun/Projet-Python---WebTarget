@@ -10,7 +10,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import tkMessageBox
-import Email
+
 import crawler
 from Tkinter import *
 import os
@@ -32,6 +32,7 @@ labelNumberEmail = ""
 sendEmailFrame = ""
 entryDestination = ""
 entrySource = ""
+urlVal = ""
 entryObject = ""
 messageArea = ""
 sendListEmailFrame = ""
@@ -42,6 +43,7 @@ cpt = 0 #VERIFIE SI LE LABEL NOM DE CAMPAGNE EST DEJA CREE
 cpt2 = 0 #VERIFIE SI LE LABEL NOMBRE DE DESTINATAIRE EST DEJA CREE
 cpt3 = 0 #VERIFIE SI LA LISTEBOX EXISTE DEJA OU NON (VERIFICATION DES MAILS VALIDES)
 cpt4 = 0 #VERIFIE SI LA LISTEBOX EXISTE DEJA OU NON (VERIFICATION DES DOUBLONS)
+cpt5 = 0 #VERIFIE SI LA LISTEBOX EXISTE DEJA OU NON (NEWLIST)
 numberEmail = 0
 listBox = ""
 #MESSAGES D'ALTERTES
@@ -260,13 +262,27 @@ def addCSVValues(read, listBox):
             listBox.insert(0, data)
 
     return val #RETOURNE LE NOMBRE D'EMAILS
-def checkURL(url, message):
 
-    #tmpUrl = re.search(r'(www\.)([\w]+\.?)\.[\w]+', str(url))
-    tmpUrl = "http://www.thelin.net/laurent/labo/html/mailto.html"
+def getUrl():
+    global urlVal
+    return urlVal
+
+
+def checkURL(url, message):
+    global urlVal
+    urlVal = url.get()
+    try:
+        tmpUrl = re.search(r'(www\.)([\w]+\.?)\.[\w]+', url.get())
+        data = tmpUrl.group(0)
+    except:
+        message.config(text="Verifiez l'orthographe de l'URL")
+        message.config(fg="red")
+
+
+    #tmpUrl = "http://www.thelin.net/laurent/labo/html/mailto.html"
 
     #PING L'URL
-    response = doPing(url.get())
+    response = doPing(data)
 
     #VERIFIE SI LE LABEL EXISTE DEJA POUR EVITER DE CREER DES DOUBLONS A CHAQUE LANCEMENT DE LA FONCTION
     if message.winfo_exists() != 1:
@@ -275,6 +291,7 @@ def checkURL(url, message):
 
     #SI LE PING A FONCTIONNE : FERME LA FENETRE ET AFFICHE LES URLS TROUVEES
     if response == 0:
+
         path = os.getcwd()
         os.chdir(path + "\Module\SpiderCrawl\SpiderCrawl\spiders")
         os.system("scrapy crawl crawler")
@@ -291,7 +308,7 @@ def checkURL(url, message):
         message.config(fg="red")
     ifEmpty(listBox)
 def nextStep(frame):
-    global isChecked1, isChecked2
+    global isChecked1, isChecked2, cpt5
     global sendEmailFrame
     global sendListEmailFrame
     global listBox
@@ -299,6 +316,7 @@ def nextStep(frame):
     global listValidDomain
     global entryDestination
     global newList
+
 
     if isChecked1.get() == 1 and isChecked2.get() == 0:
         list = listWithoutDouble.get(0, END)
@@ -324,11 +342,19 @@ def nextStep(frame):
         #showComponent(sendEmailFrame, "both", 0, 0)
         sendEmailFrame.pack(side=RIGHT, fill="both", padx=5, expand=TRUE)
         sendListEmailFrame.pack(side=LEFT, fill=Y, padx=5)
+        if cpt5 == 0:
+            newList = Listbox(sendListEmailFrame)
+            newList.pack(fill="both")
+            for data in list:
+                newList.insert(END, data)
+            cpt5 += 1
 
-        newList = Listbox(sendListEmailFrame)
-        newList.pack(fill="both")
-        for data in list:
-            newList.insert(END, data)
+        else:
+            newList.delete(0, END)
+            for data in list:
+                newList.insert(END, data)
+
+
 
 
 
@@ -390,7 +416,7 @@ def addEmailToEntry(list, entry):
         verify = verify[len(verify) - 1]
         response = doPing(verify)
         if response != 0:
-            errorMessagesDialog("Cet email est invalide.")
+            errorMessagesDialog("Cet email est invalide ou reessayez.")
         else:
             entry.insert(END, value)
             entry.insert(END, ";")
@@ -423,7 +449,16 @@ def sendEmail():
     infoMessagesDialog("Mail envoye ! ")
 
 
-class Window:
+
+def returnToCampagneConfig():
+    global sendListEmailFrame, sendEmailFrame, labelFrameOptions
+    hideComponent(sendEmailFrame)
+    hideComponent(sendListEmailFrame)
+    showComponent(labelFrameOptions, "both", 0, 0)
+
+
+class windowmain:
+    global urlVal
     global sendListEmailFrame
     global sendEmailFrame
     global newList
@@ -481,7 +516,7 @@ class Window:
     #CE LABEL VA SERVIR DE BOX POUR LES BOUTONS
     labelButtonBox = Label(labelFrameOptions)
     labelButtonBox.pack(fill=X, padx=0, pady=15)
-    buttonImportCSV = Button(labelButtonBox, text="Importer depuis un fichier CSV",
+    buttonImportCSV = Button(labelButtonBox, text="Importer des emails depuis un fichier CSV",
                              command=lambda: readCSVFile(listBox, 1, ""))
     buttonImportURL = Button(labelButtonBox, text="Importer depuis une URL", command=lambda: addURLDialog())
     buttonImportCSV.pack()
@@ -499,6 +534,8 @@ class Window:
 
     checkDouble.pack(side=BOTTOM)
     checkIsEmailValid.pack(side=BOTTOM)
+
+
 
     #PAGE ENVOI DE MAIL
     sendListEmailFrame = LabelFrame(window, text="Ma liste d'emails")
@@ -520,10 +557,13 @@ class Window:
     labelMessage = Label(sendEmailFrame, text="Message")
     messageArea = Text(sendEmailFrame)
     #buttonSend = Button(sendEmailFrame, text="Envoyer", command=lambda : sendEmail(entrySource.get(), entryObject.get(), messageArea.get()))
+
     buttonSend = Button(sendEmailFrame, text="Envoyer",
                         command=lambda: sendEmail())
     buttonAdd = Button(sendListEmailFrame, text="Ajouter", command=lambda:addEmailToEntry(newList, entryDestination))
+    returnButton = Button(sendListEmailFrame, text="< Retour", command=lambda :returnToCampagneConfig())
     buttonAdd.pack()
+    returnButton.pack()
 
 
     labelDestination.pack()
